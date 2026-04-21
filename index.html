@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicConnect | Your AI Election Assistant</title>
+    <meta name="description" content="AI-powered assistant to guide you step-by-step through the voting process.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Firebase SDKs (Compat versions for simpler CDN integration in Vanilla JS) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <!-- Google Translate Script -->
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-container">
+                <span class="material-icons-outlined logo-icon">how_to_vote</span>
+                <h1>CivicConnect</h1>
+            </div>
+            <div class="header-actions">
+                <div id="google_translate_element" class="translate-widget"></div>
+                <button id="auth-btn" class="btn btn-outline" aria-label="Sign In">Sign In</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- Welcome / Unauthenticated State -->
+            <section id="welcome-section" class="card fade-in">
+                <h2>Welcome to your personal Election Assistant</h2>
+                <p>Sign in to track your voting progress, get personalized guidance, and find your polling booth.</p>
+                <button id="main-signin-btn" class="btn btn-primary btn-large">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google Logo" class="btn-icon">
+                    Sign in with Google
+                </button>
+            </section>
+
+            <!-- Dashboard / Authenticated State (Hidden by default) -->
+            <section id="dashboard-section" class="dashboard fade-in hidden">
+                <div class="welcome-user">
+                    <h2 id="user-greeting">Hello, Voter!</h2>
+                    <p>Let's get you ready for election day.</p>
+                </div>
+
+                <!-- Progress Checklist -->
+                <div class="checklist-container card">
+                    <h3>Your Voting Journey</h3>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <ul class="checklist" id="voting-checklist">
+                        <li class="check-item" data-step="1">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="check-eligibility">
+                                <span class="checkmark"></span>
+                            </label>
+                            <div class="check-content">
+                                <h4>Verify Eligibility</h4>
+                                <p>Make sure you meet the age and citizenship criteria.</p>
+                                <button class="btn btn-text btn-small action-btn" data-action="check_eligibility">Check Now</button>
+                            </div>
+                        </li>
+                        <li class="check-item" data-step="2">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="check-registration">
+                                <span class="checkmark"></span>
+                            </label>
+                            <div class="check-content">
+                                <h4>Register to Vote</h4>
+                                <p>Ensure your name is on the electoral roll.</p>
+                            </div>
+                        </li>
+                        <li class="check-item" data-step="3">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="check-polling-booth">
+                                <span class="checkmark"></span>
+                            </label>
+                            <div class="check-content">
+                                <h4>Find Polling Booth</h4>
+                                <p>Locate where you need to go to cast your vote.</p>
+                                <button class="btn btn-text btn-small action-btn" data-action="find_booth">Find Booth</button>
+                            </div>
+                        </li>
+                        <li class="check-item" data-step="4">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="check-voted">
+                                <span class="checkmark"></span>
+                            </label>
+                            <div class="check-content">
+                                <h4>Cast Your Vote</h4>
+                                <p>Go to the booth and make your voice heard!</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions grid-2">
+                    <div class="action-card card ripple" id="action-map">
+                        <span class="material-icons-outlined action-icon text-primary">place</span>
+                        <h3>Find Booth</h3>
+                        <p>Locate nearest polling station</p>
+                    </div>
+                    <div class="action-card card ripple" id="action-reminder">
+                        <span class="material-icons-outlined action-icon text-secondary">event</span>
+                        <h3>Set Reminder</h3>
+                        <p>Add to Google Calendar</p>
+                    </div>
+                </div>
+
+                <!-- Map Container (Hidden by default) -->
+                <div id="map-section" class="map-container card hidden">
+                    <div class="map-header">
+                        <h3>Your Polling Booth</h3>
+                        <button id="close-map-btn" class="btn-icon-only"><span class="material-icons-outlined">close</span></button>
+                    </div>
+                    <div id="google-map" class="map-view"></div>
+                    <div id="map-details" class="map-details hidden">
+                        <h4 id="booth-name">Loading booth...</h4>
+                        <p id="booth-distance" class="text-muted">Calculating distance...</p>
+                        <a id="nav-link" href="#" target="_blank" class="btn btn-primary w-100 mt-2">
+                            <span class="material-icons-outlined">directions</span> How to Reach
+                        </a>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+
+        <!-- Floating Chatbot -->
+        <div id="chatbot-container" class="chatbot-container closed">
+            <div class="chat-header" id="chat-header">
+                <div class="chat-title">
+                    <span class="material-icons-outlined">support_agent</span>
+                    <span>Assistant</span>
+                </div>
+                <button id="chat-toggle-btn" class="btn-icon-only"><span class="material-icons-outlined">expand_less</span></button>
+            </div>
+            <div class="chat-body hidden" id="chat-body">
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be injected here -->
+                    <div class="message bot-message">
+                        <p>Hi! I'm your Election Assistant. How can I help you today?</p>
+                        <div class="quick-replies">
+                            <button class="quick-reply-btn" data-intent="Am I eligible to vote?">Am I eligible to vote?</button>
+                            <button class="quick-reply-btn" data-intent="Find my polling booth">Find my polling booth</button>
+                            <button class="quick-reply-btn" data-intent="How to register?">How to register?</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Type your question..." autocomplete="off">
+                    <button id="chat-send-btn" class="btn-icon-only text-primary"><span class="material-icons-outlined">send</span></button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <!-- Note: In a real app, API keys should not be hardcoded in HTML. 
+         We will load the Maps script dynamically in maps.js to use the config key -->
+    <script src="config.sample.js"></script> <!-- User will need to rename to config.js -->
+    <script src="firebase.js"></script>
+    <script src="maps.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

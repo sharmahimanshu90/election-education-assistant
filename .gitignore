@@ -1,0 +1,9 @@
+# API Keys and Secrets
+config.js
+
+# Dependencies (if you ever add Node.js tooling later)
+node_modules/
+
+# OS generated files
+.DS_Store
+Thumbs.db
